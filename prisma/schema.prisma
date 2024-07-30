@@ -1,0 +1,66 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(uuid())
+  email            String   @unique
+  username         String   @unique
+  password         String
+  company_name     String
+  mobile_number    String 
+  invitedUsers     InvitedUser[]
+}
+
+model InvitedUser {
+  id               String   @id @default(uuid())
+  email            String   @unique
+  username         String   @unique
+  admin            User?     @relation(fields: [adminId], references: [id])
+  adminId          String?
+}
+
+model Campaign {
+  id              String    @id @default(uuid())
+  name            String    @unique
+  goal            String
+  duration        String
+  status          String 
+  date            String
+}
+
+model Fbuser {
+  id           String   @id @default(uuid())
+  user_id      String   @unique
+  user_token   String   @unique
+  pages        Fbpage[] 
+}
+
+model Fbpage { 
+  id                    String   @id @default(uuid())
+  page_name             String   @unique
+  page_id               String   @unique
+  page_token            String   @unique
+  insta_business_id     String?  @unique
+  owner                 Fbuser   @relation(fields: [ownerId], references: [id])
+  ownerId               String
+}
+
+model Ytchannel{
+    id                    String   @id @default(uuid())
+    channel_id            String   @unique
+    channel_title         String   @unique
+    channel_description   String
+    channel_thumbnail     String
+}
