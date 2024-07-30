@@ -7,9 +7,9 @@ const axios = require("axios");
 const fileUpload = require("express-fileupload");
 const cors = require("cors");
 const { PrismaClient } = require("@prisma/client");
-const userRouter = require("./routes/user");
-const { sendEmail } = require("./sendEmail");
-const youtubeRouter = require("./routes/youtube");
+const userRouter = require("../routes/user");
+const { sendEmail } = require("../sendEmail");
+const youtubeRouter = require("../routes/youtube");
 const prisma = new PrismaClient();
 
 const app = express();
@@ -325,6 +325,7 @@ app.post("/send-email", async (req, res) => {
   console.log("html", html.toString());
   sendEmail(to, subject, textContent, html.toString());
 });
+app.get("/", (req, res) => res.send("Express on Vercel"));
 
 app.listen(5000, () => {
   console.log("Server is running on port 5000");
