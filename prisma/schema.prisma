@@ -16,10 +16,8 @@ datasource db {
 model User {
   id               String   @id @default(uuid())
   email            String   @unique
-  username         String   @unique
+  username         String   
   password         String
-  company_name     String
-  mobile_number    String 
   invitedUsers     InvitedUser[]
 }
 
@@ -29,15 +27,6 @@ model InvitedUser {
   username         String   @unique
   admin            User?     @relation(fields: [adminId], references: [id])
   adminId          String?
-}
-
-model Campaign {
-  id              String    @id @default(uuid())
-  name            String    @unique
-  goal            String
-  duration        String
-  status          String 
-  date            String
 }
 
 model Fbuser {

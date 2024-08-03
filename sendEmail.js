@@ -2,11 +2,6 @@ const nodemailer = require("nodemailer");
 require("dotenv").config();
 
 exports.sendEmail = async (to, subject, textContent, html) => {
-  console.log("to", to);
-  console.log("subject", subject);
-  console.log("textContent", textContent);
-  console.log("html", html);
-
   const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 587,
@@ -22,7 +17,7 @@ exports.sendEmail = async (to, subject, textContent, html) => {
 
   const mail_options = {
     from: {
-      name: "TEST",
+      name: "Intrend",
       address: process.env.EMAIL_SENDER,
     },
     to: to,
@@ -32,8 +27,7 @@ exports.sendEmail = async (to, subject, textContent, html) => {
   };
 
   try {
-    let info = await transporter.sendMail(mail_options);
-    console.log("Email sent: " + info.response);
+    await transporter.sendMail(mail_options);
   } catch (error) {
     console.log("Error sending email: ", error);
   }

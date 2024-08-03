@@ -6,6 +6,8 @@ const session = require("express-session");
 const axios = require("axios");
 const fileUpload = require("express-fileupload");
 const cors = require("cors");
+const bcrypt = require("bcryptjs");
+
 const { PrismaClient } = require("@prisma/client");
 const userRouter = require("../routes/user");
 const { sendEmail } = require("../sendEmail");
@@ -32,7 +34,7 @@ app.use(
 app.use(
   session({
     secret: "your_secret_key",
-    resave: true,
+    resave: false,
     saveUninitialized: true,
     cookie: {
       secure: false, // Set to true if using HTTPS
