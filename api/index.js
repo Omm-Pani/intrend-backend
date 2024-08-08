@@ -26,7 +26,7 @@ const s3 = new AWS.S3();
 
 app.use(
   cors({
-    origin: "http://localhost:3000", // Frontend URL
+    origin: "https://intrend.vercel.app", // Frontend URL
     credentials: true, // Allow credentials (cookies) to be sent
   })
 );
