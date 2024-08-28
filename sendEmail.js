@@ -15,7 +15,7 @@ exports.sendEmail = async (to, subject, textContent, html) => {
   // Convert array of recipients to comma-separated string if necessary
   // const recipients = Array.isArray(to) ? to.join(", ") : to;
 
-  const mail_options = {
+  const mailOptions = {
     from: {
       name: "Intrend",
       address: process.env.EMAIL_SENDER,
@@ -27,16 +27,11 @@ exports.sendEmail = async (to, subject, textContent, html) => {
   };
 
   try {
-    await transporter.sendMail(mail_options);
+    // await transporter.sendMail(mailOptions);
+    let info = await transporter.sendMail(mailOptions);
+    console.log("Email sent: " + info.response);
   } catch (error) {
-    console.log("Error sending email: ", error);
+    console.error("Error sending email:", error);
+    throw error; // Rethrow the error to be handled by the caller
   }
 };
-
-// Example usage (uncomment to test):
-// sendEmail(
-//   ["ommpani9@gmail.com", "ommpani99@gmail.com"],
-//   "Test Subject",
-//   "Test text content",
-//   "<p>Test HTML content</p>"
-// );

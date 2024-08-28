@@ -26,17 +26,21 @@ const s3 = new AWS.S3();
 
 app.use(
   cors({
-    origin: "https://intrend.vercel.app", // Frontend URL
+    origin: ["https://intrend.vercel.app", "http://localhost:3000"], // Frontend URL
     credentials: true, // Allow credentials (cookies) to be sent
   })
 );
-
+const MemoryStore = require("memorystore")(session);
 app.use(
   session({
-    secret: "your_secret_key",
+    store: new MemoryStore({
+      checkPeriod: 86400000, // prune expired entries every 24h
+    }),
     resave: false,
     saveUninitialized: true,
+    secret: "your_secret_key",
     cookie: {
+      maxAge: 86400000,
       secure: false, // Set to true if using HTTPS
       httpOnly: true,
       sameSite: "lax", // Or 'strict'/'none' based on your needs
