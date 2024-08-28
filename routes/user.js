@@ -29,8 +29,14 @@ userRouter.post("/send-otp", async (req, res) => {
         return res.status(500).send("Error during session save");
       }
     });
-    sendEmail(emailId, "Intrend Login OTP", "", `<p>Your OTP is ${otp}</p>`);
-    res.send({ message: "Otp sent to email" });
+
+    const response = await sendEmail(
+      emailId,
+      "Intrend Login OTP",
+      "",
+      `<p>Your OTP is ${otp}</p>`
+    );
+    res.send({ message: response });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

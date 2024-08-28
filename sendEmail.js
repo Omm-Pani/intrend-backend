@@ -3,7 +3,12 @@ require("dotenv").config();
 
 exports.sendEmail = async (to, subject, textContent, html) => {
   const transporter = nodemailer.createTransport({
+    service: "gmail",
     host: "smtp.gmail.com",
+    tls: {
+      ciphers: "SSLv3",
+      rejectUnauthorized: false,
+    },
     port: 587,
     secure: false, // Use `true` for port 465, `false` for all other ports
     auth: {
@@ -26,12 +31,24 @@ exports.sendEmail = async (to, subject, textContent, html) => {
     html: html.toString(),
   };
 
-  try {
-    // await transporter.sendMail(mailOptions);
-    let info = await transporter.sendMail(mailOptions);
-    console.log("Email sent: " + info.response);
-  } catch (error) {
-    console.error("Error sending email:", error);
-    throw error; // Rethrow the error to be handled by the caller
-  }
+  // try {
+  //   let info = await transporter.sendMail(mailOptions);
+  //   console.log("Email sent: " + info.response);
+  // } catch (error) {
+  //   console.error("Error sending email:", error);
+  //   throw error; // Rethrow the error to be handled by the caller
+  // }
+
+  await new Promise((resolve, reject) => {
+    transporter.sendMail(mailOptions, (err, info) => {
+      if (err) {
+        console.error("Error sending email:", err);
+        reject(err);
+        throw err;
+      } else {
+        console.log("Email sent: " + info.response);
+        resolve(info);
+      }
+    });
+  });
 };
