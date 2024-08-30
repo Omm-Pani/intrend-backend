@@ -6,7 +6,6 @@ const session = require("express-session");
 const axios = require("axios");
 const fileUpload = require("express-fileupload");
 const cors = require("cors");
-const bcrypt = require("bcryptjs");
 
 const { PrismaClient } = require("@prisma/client");
 const userRouter = require("../routes/user");
@@ -30,6 +29,7 @@ app.use(
     credentials: true, // Allow credentials (cookies) to be sent
   })
 );
+app.set("trust proxy", 1);
 const MemoryStore = require("memorystore")(session);
 app.use(
   session({
@@ -39,11 +39,12 @@ app.use(
     resave: false,
     saveUninitialized: true,
     secret: "your_secret_key",
+    name: "MyCoolWebAppCookieName",
     cookie: {
       maxAge: 86400000,
-      secure: false, // Set to true if using HTTPS
+      secure: true, // Set to true if using HTTPS
       httpOnly: true,
-      sameSite: "lax", // Or 'strict'/'none' based on your needs
+      sameSite: "none", // Or 'strict'/'none' based on your needs
     },
   })
 );
