@@ -22,7 +22,7 @@ const s3 = new AWS.S3();
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  "http://localhost:5000/youtube/auth/callback"
+  "https://intrend-backend.vercel.app/youtube/auth/callback"
 );
 const youtube = google.youtube({ version: "v3", auth: oauth2Client });
 
@@ -70,7 +70,7 @@ youtubeRouter.get("/auth/callback", async (req, res) => {
       data: YtchannelData,
       skipDuplicates: true,
     });
-    res.redirect("http://localhost:3000/integrations");
+    res.redirect("https://intrend.vercel.app/integrations");
   } catch (error) {
     console.log("error during authentication", error);
     res.status(500).send("Error during Youtube authentication");

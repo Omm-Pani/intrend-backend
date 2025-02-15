@@ -58,7 +58,9 @@ app.use(express.json());
 
 const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
 const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
-const CALLBACK_URL = process.env.CALLBACK_URL;
+// const CALLBACK_URL = process.env.CALLBACK_URL;
+const CALLBACK_URL =
+  "https://intrend-backend.vercel.app/auth/facebook/callback";
 
 // Routes and logic go here
 app.use("/user", userRouter);
@@ -122,7 +124,7 @@ app.get("/auth/facebook/callback", async (req, res) => {
         console.error("Error saving session:", err);
         return res.status(500).send("Error during session save");
       }
-      res.redirect("http://localhost:3000/integrations");
+      res.redirect("https://intrend-backend.vercel.app/integrations");
     });
   } catch (error) {
     console.error("Error during Facebook authentication:", error);
