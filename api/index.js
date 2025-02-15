@@ -29,7 +29,7 @@ app.use(
     credentials: true, // Allow credentials (cookies) to be sent
   })
 );
-app.set("trust proxy", 1);
+// app.set("trust proxy", 1);
 const MemoryStore = require("memorystore")(session);
 app.use(
   session({
@@ -42,9 +42,9 @@ app.use(
     name: "MyCoolWebAppCookieName",
     cookie: {
       maxAge: 86400000,
-      secure: true, // Set to true if using HTTPS
+      secure: false, // Set to true if using HTTPS
       httpOnly: true,
-      sameSite: "none", // Or 'strict'/'none' based on your needs
+      sameSite: "lax", // Or 'strict'/'none' based on your needs
     },
   })
 );
