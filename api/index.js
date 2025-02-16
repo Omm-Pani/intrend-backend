@@ -29,8 +29,11 @@ app.use(
     credentials: true, // Allow credentials (cookies) to be sent
   })
 );
-// app.set("trust proxy", 1);
+
+app.set("trust proxy", 1); // uncomment in production
+
 const MemoryStore = require("memorystore")(session);
+
 app.use(
   session({
     store: new MemoryStore({
@@ -39,15 +42,33 @@ app.use(
     resave: false,
     saveUninitialized: true,
     secret: "your_secret_key",
-    name: "MyCoolWebAppCookieName",
+    name: "intrend",
     cookie: {
       maxAge: 86400000,
-      secure: false, // Set to true if using HTTPS
-      httpOnly: true,
-      sameSite: "lax", // Or 'strict'/'none' based on your needs
+      secure: true, // Set to true if using HTTPS
+      httpOnly: false,
+      sameSite: "none", // Or 'strict'/'none' based on your needs
     },
   })
-);
+); //uncomment in production
+
+// app.use(
+//   session({
+//     store: new MemoryStore({
+//       checkPeriod: 86400000, // prune expired entries every 24h
+//     }),
+//     resave: false,
+//     saveUninitialized: true,
+//     secret: "your_secret_key",
+//     name: "MyCoolWebAppCookieName",
+//     cookie: {
+//       maxAge: 86400000,
+//       secure: false, // Set to true if using HTTPS
+//       httpOnly: true,
+//       sameSite: "lax", // Or 'strict'/'none' based on your needs
+//     },
+//   })
+// ); //comment in production
 
 app.use(
   fileUpload({
