@@ -17,12 +17,15 @@ AWS.config.update({
   region: process.env.AWS_REGION,
 });
 
-const s3 = new AWS.S3();
+const s3 = new AWS.S3({
+  signatureVersion: "v4",
+  region: process.env.AWS_REGION, // It's good practice to specify region here too
+});
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  "https://intrend-backend.vercel.app/youtube/auth/callback"
+  `${process.env.SERVER_URL}/youtube/auth/callback`
 );
 const youtube = google.youtube({ version: "v3", auth: oauth2Client });
 
@@ -70,7 +73,7 @@ youtubeRouter.get("/auth/callback", async (req, res) => {
       data: YtchannelData,
       skipDuplicates: true,
     });
-    res.redirect("https://intrend.vercel.app/integrations");
+    res.redirect(`${process.env.CLIENT_URL}/integrations`);
   } catch (error) {
     console.log("error during authentication", error);
     res.status(500).send("Error during Youtube authentication");
@@ -289,42 +292,10 @@ youtubeRouter.post("/s3VideoUrl", (req, res) => {
   res.json({ url, key: `videos/${file.fileName}` });
 });
 
-// youtubeRouter.post("/upload", async (req, res) => {
-//   const { videoTitle, videoDescription, videoFile, channelId } = req.body;
-//   const filePath = `${__dirname}/uploads/${videoFile}`; // assuming video file path
-
-//   const youtube = google.youtube({ version: "v3", auth: oauth2Client });
-//   const response = await youtube.videos.insert({
-//     part: "snippet,status",
-//     requestBody: {
-//       snippet: {
-//         channelId: channelId,
-//         title: videoTitle,
-//         description: videoDescription,
-//         tags: ["sample tag"],
-//         categoryId: "22", // Assuming category as "People & Blogs"
-//       },
-//       status: {
-//         privacyStatus: "public",
-//       },
-//     },
-//     media: {
-//       body: fs.createReadStream(filePath),
-//     },
-//   });
-
-//   if (response.data.id) {
-//     console.log(`Video uploaded to channel ID: ${channelId}`);
-//     res.send("Video uploaded successfully!");
-//   } else {
-//     res.status(400).send("Failed to upload video.");
-//   }
-// });
-
 youtubeRouter.post("/upload/video", auth, async (req, res) => {
   const {
-    s3VideoUrl,
-    // s3ThumbnailUrl,
+    s3VideoKey, // We now receive the key from the frontend
+    s3ThumbnailKey, // We also get the thumbnail key
     title,
     description,
     tags,
@@ -332,152 +303,89 @@ youtubeRouter.post("/upload/video", auth, async (req, res) => {
     privacyStatus,
     publishAt,
   } = req.body;
+
+  if (!s3VideoKey) {
+    return res.status(400).json({ message: "s3VideoKey is required." });
+  }
+
   try {
-    // Download the video and thumbnail from S3 to local storage
-    const videoPath = path.resolve(__dirname, "video.mp4");
-    const response = await axios({
-      url: s3VideoUrl,
-      method: "GET",
-      responseType: "stream",
+    // 1. Create an AUTHENTICATED readable stream directly from the S3 Object using the SDK
+    const s3Stream = s3
+      .getObject({
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: s3VideoKey,
+      })
+      .createReadStream();
+
+    // Handle potential errors from the S3 stream itself
+    s3Stream.on("error", (err) => {
+      console.error("S3 Stream Error:", err);
+      // We cannot send a response here as one might already be sent.
+      // The outer try/catch will handle the failure.
+      throw new Error("Failed to stream video from S3.");
     });
-    const writer = fs.createWriteStream(videoPath);
-    response.data.pipe(writer);
 
-    writer.on("finish", async () => {
-      // Upload video to YouTube
-      let videoMetaData = {};
-      if (publishAt) {
-        videoMetaData = {
-          snippet: {
-            title: title || "Default Title",
-            description: description || "Default Description",
-            tags: tags || ["tag1", "tag2"],
-            categoryId: categoryId || "22", // Category for "People & Blogs"
-          },
-          status: {
-            privacyStatus: "private",
-            publishAt: publishAt,
-          },
-        };
-      } else {
-        videoMetaData = {
-          snippet: {
-            title: title || "Default Title",
-            description: description || "Default Description",
-            tags: tags || ["tag1", "tag2"],
-            categoryId: categoryId || "22", // Category for "People & Blogs"
-          },
-          status: {
-            privacyStatus: privacyStatus || "public",
-          },
-        };
-      }
+    // 2. Prepare YouTube metadata
+    const videoMetaData = {
+      snippet: {
+        title: title || "Default Title",
+        description: description || "Default Description",
+        tags: tags || [],
+        categoryId: categoryId || "22",
+      },
+      status: {
+        privacyStatus: privacyStatus || "public",
+      },
+    };
 
-      const media = {
-        body: fs.createReadStream(videoPath),
-      };
+    if (publishAt) {
+      videoMetaData.status.privacyStatus = "private"; // Scheduled videos must be private first
+      videoMetaData.status.publishAt = publishAt;
+    }
 
-      youtube.videos.insert(
-        {
-          part: "snippet,status",
-          resource: videoMetaData,
-          media: media,
-          notifySubscribers: true,
+    // 3. Insert the video by piping the S3 stream directly to the YouTube API
+    const youtubeResponse = await youtube.videos.insert({
+      part: "snippet,status",
+      requestBody: videoMetaData,
+      media: {
+        body: s3Stream, // Use the authenticated stream from the SDK
+      },
+      notifySubscribers: true,
+    });
+
+    const videoId = youtubeResponse.data.id;
+    console.log("Video uploaded successfully: " + videoId);
+
+    // 4. (Optional) Set the thumbnail if one was provided
+    if (s3ThumbnailKey && videoId) {
+      console.log(`Setting thumbnail for video ID: ${videoId}`);
+      const thumbnailS3Stream = s3
+        .getObject({
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: s3ThumbnailKey,
+        })
+        .createReadStream();
+
+      await youtube.thumbnails.set({
+        videoId: videoId,
+        media: {
+          body: thumbnailS3Stream,
         },
-        async (err, data) => {
-          if (err) {
-            console.error("Error uploading video: ", err);
-            return res.status(500).send("Failed to upload video");
-          }
+      });
+      console.log("Thumbnail set successfully.");
+    }
 
-          // Clean up the local video file
-          fs.unlinkSync(videoPath);
-
-          console.log("Video uploaded successfully: " + data.data.id);
-          res.status(200).send(`Video uploaded successfully: ${data.data.id}`);
-        }
-      );
-    });
-
-    writer.on("error", (err) => {
-      console.error("Error downloading video from S3: ", err);
-      res.status(500).send("Failed to download video from S3");
-    });
+    res
+      .status(200)
+      .send({ message: `Video uploaded successfully: ${videoId}` });
   } catch (error) {
     console.error("Error during upload process: ", error);
-    res.status(500).send("Failed to upload video");
+    res.status(500).json({
+      message: "Failed to upload video to YouTube.",
+      error: error.message,
+    });
   }
 });
-
-// youtubeRouter.post("/upload/video", async (req, res) => {
-//   const { s3VideoUrl, title, description, tags, categoryId, privacyStatus } =
-//     req.body;
-
-//   if (!s3VideoUrl) {
-//     return res.status(400).send("Missing s3VideoUrl");
-//   }
-
-//   // Generate a unique file name for the video in the OS temporary directory
-//   const videoFilename = `${uuidv4()}.mp4`;
-//   const videoPath = path.join(os.tmpdir(), videoFilename);
-
-//   try {
-//     // Download the video from S3 using axios and stream it to a local file
-//     const response = await axios({
-//       url: s3VideoUrl,
-//       method: "GET",
-//       responseType: "stream",
-//     });
-
-//     await pipeline(response.data, fs.createWriteStream(videoPath));
-
-//     // Prepare the video metadata for YouTube
-//     const videoMetaData = {
-//       snippet: {
-//         title: title || "Default Title",
-//         description: description || "Default Description",
-//         tags: tags || ["tag1", "tag2"],
-//         categoryId: categoryId || "22", // Category for "People & Blogs"
-//       },
-//       status: {
-//         privacyStatus: privacyStatus || "public",
-//       },
-//     };
-
-//     const media = {
-//       body: fs.createReadStream(videoPath),
-//     };
-
-//     // Wrap the YouTube API call in a Promise so that we can await it
-//     const youtubeResponse = await new Promise((resolve, reject) => {
-//       youtube.videos.insert(
-//         {
-//           part: "snippet,status",
-//           resource: videoMetaData,
-//           media: media,
-//           notifySubscribers: true,
-//         },
-//         (err, data) => {
-//           if (err) return reject(err);
-//           resolve(data);
-//         }
-//       );
-//     });
-
-//     console.log("Video uploaded successfully: " + youtubeResponse.data.id);
-//     res
-//       .status(200)
-//       .send(`Video uploaded successfully: ${youtubeResponse.data.id}`);
-//   } catch (error) {
-//     console.error("Error during upload process: ", error);
-//     res.status(500).send("Failed to upload video");
-//   } finally {
-//     // Attempt to clean up the temporary video file asynchronously
-//     fs.promises.unlink(videoPath).catch((err) => {
-//       console.error("Error cleaning up temporary file:", err);
-//     });
-//   }
-// });
 
 module.exports = youtubeRouter;
 
